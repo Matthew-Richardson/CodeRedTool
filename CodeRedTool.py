@@ -2,41 +2,38 @@ import arcpy
 import os
 
 def main():
-    # === Script tool inputs ===
-    input_layer = arcpy.GetParameter(0)      # Feature layer from map
+    # Get inputs from ArcGIS Pro tool
+    input_layer = arcpy.GetParameter(0)  # Feature Layer with selection
     output_folder = arcpy.GetParameterAsText(1)
     output_name = arcpy.GetParameterAsText(2)
 
-    # Hardcoded NAD83 (EPSG:4269)
+    # NAD83 Geographic Coordinate System
     output_sr = arcpy.SpatialReference(4269)
 
-    # Validate selection
+    # Ensure features are selected
     desc = arcpy.Describe(input_layer)
     if not desc.FIDSet:
-        arcpy.AddError("⚠️ No features are selected in the input layer.")
-        raise ValueError("No features selected.")
+        arcpy.AddError("⚠️ No features selected in input layer.")
+        raise ValueError("No selection.")
 
-    arcpy.env.overwriteOutput = True
+    # Set environment
     arcpy.env.workspace = "in_memory"
+    arcpy.env.overwriteOutput = True
 
-    # Copy selected features
     arcpy.AddMessage("Copying selected features...")
-    temp_fc = "in_memory/selected_features"
+    temp_fc = "in_memory/selected"
     arcpy.CopyFeatures_management(input_layer, temp_fc)
 
-    # Reproject to NAD83
     arcpy.AddMessage("Reprojecting to NAD83 (EPSG:4269)...")
-    projected_fc = "in_memory/projected_features"
+    projected_fc = "in_memory/projected"
     arcpy.Project_management(temp_fc, projected_fc, output_sr)
 
-    # Export to shapefile
-    arcpy.AddMessage("Exporting shapefile...")
+    arcpy.AddMessage("Exporting to shapefile...")
     arcpy.FeatureClassToShapefile_conversion([projected_fc], output_folder)
 
-    # Rename all output files to match desired base name
-    base_name = "projected_features"
-    extensions = [".shp", ".shx", ".dbf", ".prj", ".cpg"]
-    for ext in extensions:
+    # Rename files to match user-defined output name
+    base_name = "projected"
+    for ext in [".shp", ".shx", ".dbf", ".prj", ".cpg"]:
         src = os.path.join(output_folder, base_name + ext)
         dst = os.path.join(output_folder, output_name + ext)
         if os.path.exists(src):
